@@ -2,67 +2,157 @@
 #include<vector>
 #include<fstream>
 using namespace std;
-
-class DocumentEditor{
+class DocumentElement{
+   public:
+      virtual string render() = 0;
+};
+class TextElement: public DocumentElement{
     private:
-       vector<string> documentElements;
-       string renderedDocument;
+       string text;
 
-    public:
-      void addText(string text){
-        documentElements.push_back(text);
+    public: 
+      TextElement(string text){
+        this->text = text;
       }
 
-      void addImage(string imagePath){
-        documentElements.push_back(imagePath);
-      }
-
-      // check the type at run time and render
-      string renderDocument(){
-          if(renderedDocument.empty()){
-            string result;
-            for(auto element: documentElements){
-                if(element.size() > 4 && 
-                (element.substr(element.size()-4) == ".jpg" || 
-                 element.substr(element.size()-4) == ".png"
-            )){
-
-                result += "[Image: "+element+"]" + "\n";
-
-            }
-            else{
-                result += element + "\n";
-            }
-            }
-
-            renderedDocument = result;
-            return renderedDocument;
-          }
-          else{
-            return renderedDocument;
-          }
-      }
-
-      void saveToFile(){
-        ofstream file("document.txt");
-        if(file.is_open()){
-            file << renderDocument();
-            file.close();
-            cout<<"Document saved to document.txt"<<endl;
-        }
-        else{
-            cout<<"Error: Can't open the file for write"<<endl;
-        }
+      string render() override{
+        return text;
       }
 };
-int main(){
-   DocumentEditor editor;
-   editor.addText("This is boy Ankit Singh Rajput!");
-   editor.addImage("ankits-profile.png");
-   editor.addImage("cover-image.jpg");
-   editor.addText("I am a scalable backend Engineer");
-   editor.addText("I am a product Engineer");
-   editor.saveToFile();
 
+class ImageElement: public DocumentElement{
+    private:
+        string imagePath;
+
+    public: 
+      ImageElement(string imagePath){
+          this->imagePath = imagePath;
+      }
+
+      string render() override{
+        return "[Image: " + imagePath + "]";
+      }
+};
+
+class NewLineElement: public DocumentElement{
+    public:
+    string render() override{
+        return "\n";
+    }
+};
+
+class TabsElement: public DocumentElement{
+    public: 
+      string render() override{
+        return "\t";
+      }
+};
+
+class Document{
+    private:
+      vector<DocumentElement*> documentElements;
+
+    public:
+      void addElement(DocumentElement* element){
+               documentElements.push_back(element);
+      }
+
+      string render(){
+        string result;
+        for(auto element: documentElements){
+            result += element->render();
+        }
+        return result;
+      }
+};
+
+class Persistance{
+    public:
+    virtual void save(string data) = 0;
+};
+
+class FileStorage: public Persistance{
+    public:
+      void save(string data) override{
+          ofstream file("document.txt");
+
+          if(file.is_open()){
+            file << data;
+            file.close();
+            cout<<"Document saved to document.txt file successfully!"<<endl;
+          }
+          else{
+            cout<<"Error: Unable to open file for writing."<<endl;
+          }
+      }
+};
+
+class DBStorage: public Persistance{
+    public:
+      void save(string data) override{
+        cout<<"The file saved to the DB Successfully!"<<endl;
+      }
+};
+
+class DocumentEditor{
+   Document* document;
+   Persistance* storage;
+   string renderedDocument;
+
+   public:
+    DocumentEditor(Document* document, Persistance* storage){
+        this->document = document;
+        this->storage = storage;
+    }
+
+    void addText(string text){
+        document->addElement(new TextElement(text));
+    }
+
+    void addImage(string imagePath){
+        document->addElement(new ImageElement(imagePath));
+    }
+
+    void addNewLine(){
+        document->addElement(new NewLineElement());
+    }
+
+    void addTabsSpace(){
+        document->addElement(new TabsElement());
+    }
+
+    string renderDocument(){
+        if(renderedDocument.empty()){
+            renderedDocument = document->render();
+        }
+        return renderedDocument;
+    }
+
+    void saveDocument(){
+        storage->save(renderDocument());
+    }
+};
+int main(){
+
+    Document* document = new Document();
+    Persistance* persistance = new FileStorage();
+
+    DocumentEditor* editor = new DocumentEditor(document,persistance);
+    
+    editor->addText("This is boy Ankit Singh Rajput from good design!");
+    editor->addNewLine();
+    editor->addText("The total electric flux through a closed surface it should be equal to the ratio qinside or epsilon not times the total charge enclosed by the closed surface!");
+    editor->addNewLine();
+    editor->addTabsSpace();
+    editor->addText("This is the new text after tabs space!");
+    editor->addNewLine();
+    editor->addImage("myimage.png");
+    editor->addNewLine();
+    editor->addImage("yourimage.jpg");
+    editor->addNewLine();
+    editor->addImage("OursImage.jpeg");
+
+    editor->saveDocument();
+    
     return 0;
 }
